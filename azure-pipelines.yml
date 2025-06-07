@@ -1,0 +1,54 @@
+trigger:
+- main
+
+pool:
+  vmImage: 'windows-latest'
+
+variables:
+  buildConfiguration: 'Release'
+  outputPath: '$(Build.ArtifactStagingDirectory)/publish'
+
+steps:
+- task: UseDotNet@2
+  displayName: 'Instalar .NET SDK 8'
+  inputs:
+    packageType: 'sdk'
+    version: '8.0.x'
+
+- task: DotNetCoreCLI@2
+  displayName: 'Restaurar pacotes NuGet'
+  inputs:
+    command: 'restore'
+    projects: 'Ajuda.API/Ajuda.API.csproj'
+
+- task: DotNetCoreCLI@2
+  displayName: 'Compilar Ajuda.API'
+  inputs:
+    command: 'build'
+    projects: 'Ajuda.API/Ajuda.API.csproj'
+    arguments: '--configuration $(buildConfiguration)'
+
+- task: DotNetCoreCLI@2
+  displayName: 'Publicar aplicação'
+  inputs:
+    command: 'publish'
+    publishWebProjects: false
+    projects: 'Ajuda.API/Ajuda.API.csproj'
+    arguments: '--configuration $(buildConfiguration) --output $(outputPath)'
+    zipAfterPublish: true
+
+- task: PublishBuildArtifacts@1
+  displayName: 'Publicar artefatos'
+  inputs:
+    PathtoPublish: '$(outputPath)'
+    ArtifactName: 'ajuda-api'
+    publishLocation: 'Container'
+
+- task: AzureWebApp@1
+  displayName: 'Fazer deploy no Azure App Service'
+  inputs:
+    azureSubscription: 'NewConexaoAzureDevOps'
+    appType: 'webApp'
+    appName: 'ajuda-devops-api'             
+    package: '$(outputPath)/**/*.zip'
+   
